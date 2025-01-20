@@ -66,7 +66,7 @@ def main():
     
     # Display uploaded image and analyze
     if uploaded_file is not None:
-        st.image(uploaded_file, caption="アップロードされた画像")
+        st.image(uploaded_file)
         # Analyze image automatically upon upload
         vocab_list = analyze_image_with_llm(uploaded_file.getvalue())
         st.write("抽出された単語:", vocab_list)
