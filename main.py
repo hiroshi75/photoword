@@ -4,6 +4,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.prompts.chat import HumanMessagePromptTemplate
 import base64
 import os
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 def encode_image_data(image_data):
     """
@@ -17,9 +19,9 @@ def encode_image_data(image_data):
     """
     return base64.b64encode(image_data).decode('utf-8')
 
-def analyze_image_with_llm(image_data):
+async def analyze_image_async(image_data):
     """
-    Analyze image using Google's Gemini model via Langchain.
+    Asynchronously analyze image using Google's Gemini model via Langchain.
     
     Args:
         image_data: Binary image data from uploaded file
@@ -34,7 +36,7 @@ def analyze_image_with_llm(image_data):
         model="gemini-1.5-flash-8b",
         temperature=0,
         max_tokens=None,
-        timeout=None,
+        timeout=30,  # Add 30-second timeout to prevent blocking
         max_retries=2,
     )
     
@@ -45,9 +47,31 @@ def analyze_image_with_llm(image_data):
     prompt = ChatPromptTemplate.from_messages([("system", system), human_message_template])
     chain = prompt | chat
     
-    result = chain.invoke({})
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor() as executor:
+        result = await loop.run_in_executor(executor, lambda: chain.invoke({}))
     # TODO: Parse result to extract Spanish vocabulary words
     return ["manzana", "árbol", "coche"]  # Placeholder return until we implement proper parsing
+
+def analyze_image_with_timeout(image_data, timeout=30):
+    """
+    Wrapper function that runs the async analysis with a timeout.
+    
+    Args:
+        image_data: Binary image data from uploaded file
+        timeout: Maximum time to wait for analysis (seconds)
+        
+    Returns:
+        list: A list of Spanish vocabulary words found in the image
+    """
+    try:
+        return asyncio.run(asyncio.wait_for(analyze_image_async(image_data), timeout=timeout))
+    except asyncio.TimeoutError:
+        st.error("画像解析がタイムアウトしました。もう一度お試しください。")
+        return []
+    except Exception as e:
+        st.error(f"画像解析中にエラーが発生しました: {str(e)}")
+        return []
 
 def main():
     """
@@ -68,7 +92,7 @@ def main():
     if uploaded_file is not None:
         st.image(uploaded_file)
         # Analyze image automatically upon upload
-        vocab_list = analyze_image_with_llm(uploaded_file.getvalue())
+        vocab_list = analyze_image_with_timeout(uploaded_file.getvalue(), timeout=30)
         st.write("抽出された単語:", vocab_list)
 
 if __name__ == "__main__":
