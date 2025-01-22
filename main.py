@@ -40,8 +40,8 @@ async def analyze_image_async(image_data):
         max_retries=2,
     )
     
-    system = "あなたは画像からスペイン語の単語を抽出する専門家です。画像に写っているものをスペイン語の単語として抽出してください。"
-    human_prompt = "この画像からスペイン語の単語を抽出してください。"
+    system = "あなたは画像に写っているものから、スペイン語学習者のための単語帳を作るために、可能な限り名詞、形容詞、副詞、その状況で使える動詞に変換してその単語を抽出する専門家です。画像に写っているものを全て説明するのに必要なスペイン語の単語一覧として抽出してください。"
+    human_prompt = "この画像に写っているものからスペイン語の単語を可能な限り抽出してください。"
     human_message_template = HumanMessagePromptTemplate.from_template([human_prompt, image_template])
     
     prompt = ChatPromptTemplate.from_messages([("system", system), human_message_template])
