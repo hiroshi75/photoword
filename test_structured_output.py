@@ -1,13 +1,10 @@
 import os
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
 from models import SpanishVocabulary, ImageVocabularyResponse
 
 def test_structured_output():
     """構造化出力のテスト関数"""
-    parser = JsonOutputParser(pydantic_object=ImageVocabularyResponse)
-    
     chat = ChatGoogleGenerativeAI(
         model="gemini-1.5-flash-8b",
         temperature=0,
@@ -44,7 +41,8 @@ def test_structured_output():
         ("human", human)
     ])
     
-    chain = prompt | chat | parser
+    structured_chat = chat.with_structured_output(ImageVocabularyResponse)
+    chain = prompt | structured_chat
     
     # Test with dummy response for now
     dummy_response = {
