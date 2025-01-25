@@ -6,7 +6,7 @@ from models import SpanishVocabulary, ImageVocabularyResponse
 def test_structured_output():
     """構造化出力のテスト関数"""
     chat = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash-8b",
+        model="gemini-1.5-flash",
         temperature=0,
         max_tokens=None,
         timeout=30
