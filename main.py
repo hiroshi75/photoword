@@ -4,7 +4,14 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.prompts.chat import HumanMessagePromptTemplate
 import base64
 import os
+import time
+from datetime import datetime
 from models import SpanishVocabulary, ImageVocabularyResponse
+
+def log_message(message):
+    """ターミナルにタイムスタンプ付きでログを出力"""
+    timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
+    print(f"[{timestamp}] {message}")
 
 def encode_image_data(image_data):
     """
@@ -16,7 +23,14 @@ def encode_image_data(image_data):
     Returns:
         str: Base64 encoded image data
     """
-    return base64.b64encode(image_data).decode('utf-8')
+    log_message("画像エンコード開始")
+    start_time = time.time()
+    
+    result = base64.b64encode(image_data).decode('utf-8')
+    
+    elapsed = time.time() - start_time
+    log_message(f"画像エンコード完了 (所要時間: {elapsed:.2f}秒)")
+    return result
 
 def analyze_image(image_data):
     """
@@ -28,9 +42,13 @@ def analyze_image(image_data):
     Returns:
         list: A list of Spanish vocabulary words found in the image
     """
+    log_message("画像解析開始")
+    start_time = time.time()
+    
     try:
         base64_image = encode_image_data(image_data)
         image_template = {"image_url": {"url": f"data:image/png;base64,{base64_image}"}}
+        log_message("画像テンプレート作成完了")
         
         chat = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash-8b",
@@ -48,10 +66,15 @@ def analyze_image(image_data):
         structured_chat = chat.with_structured_output(ImageVocabularyResponse)
         chain = prompt | structured_chat
         
+        log_message("AIモデルへリクエスト送信")
         result = chain.invoke({})
+        log_message("AIモデルからレスポンス受信")
         
         # Debug logging
         st.write("Debug - Raw LLM Response:", result)
+        
+        elapsed = time.time() - start_time
+        log_message(f"画像解析完了 (合計所要時間: {elapsed:.2f}秒)")
         
         if not result or not result.vocabulary:
             st.warning("画像から単語を抽出できませんでした。別の画像を試してください。")
