@@ -50,9 +50,6 @@ def analyze_image(image_data):
         
         result = chain.invoke({})
         
-        # Debug logging
-        st.write("Debug - Raw LLM Response:", result)
-        
         if not result or not result.vocabulary:
             st.warning("画像から単語を抽出できませんでした。別の画像を試してください。")
             return []
@@ -91,12 +88,13 @@ def main():
         if vocab_list:
             st.subheader("抽出された単語:")
             for vocab_item in vocab_list:
-                with st.container():
-                    st.markdown(f"**単語**: {vocab_item.word}")
-                    st.markdown(f"**品詞**: {vocab_item.part_of_speech}")
-                    st.markdown(f"**和訳**: {vocab_item.translation}")
-                    st.markdown(f"**例文**: {vocab_item.example}")
-                    st.divider()
+                # Create a 3-row table for each vocabulary item
+                data = [
+                    [f"**{vocab_item.word}**"],  # 1行目: スペイン語の単語（太字で目立たせる）
+                    [f"{vocab_item.part_of_speech}, {vocab_item.translation}"],  # 2行目: 品詞、日本語の意味
+                    [vocab_item.example]  # 3行目: 例文
+                ]
+                st.table(data)
         else:
             st.write("単語を抽出できませんでした。")
 
