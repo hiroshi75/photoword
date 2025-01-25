@@ -1,7 +1,7 @@
 import streamlit as st
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.prompts.chat import HumanMessagePromptTemplate
+from langchain_core.messages import HumanMessage
 import base64
 import os
 from models import SpanishVocabulary, ImageVocabularyResponse
@@ -48,40 +48,16 @@ def analyze_image_core(image_data: bytes) -> list[SpanishVocabulary]:
     system = """あなたは画像に写っているものから、スペイン語学習者のための単語帳を作成する専門家です。
 画像に写っているものを説明するのに必要なスペイン語の単語を抽出してください。
 
-以下の形式で単語リストを返してください：
-
-{
-  "vocabulary": [
-    {
-      "word": "silla",
-      "part_of_speech": "名詞",
-      "translation": "椅子",
-      "example": "Hay una silla junto a la mesa."
-    }
-  ]
-}
-
 各単語について、以下の4つの情報を必ず漏れなく含めてください：
 1. word: スペイン語の単語（例：mesa, silla, ventana）
 2. part_of_speech: 品詞（必ず「名詞」「動詞」「形容詞」「副詞」のいずれかを指定）
 3. translation: 日本語訳（例：テーブル、椅子、窓）
 4. example: その単語を使用したスペイン語の例文（必ず完全な文を記載）
 
-特に注目すべき要素：
-- 椅子 (silla)
-- テーブル (mesa)
-- 窓 (ventana)
-- 床 (suelo)
-- レストラン (restaurante)
-- ホール (sala)
-- ライト (luz)
-
 重要な注意点：
 1. 各単語について、必ず4つの情報（word, part_of_speech, translation, example）を全て含めてください
-2. 品詞は必ず「名詞」「動詞」「形容詞」「副詞」のいずれかを指定してください
-3. 例文は必ず完全な文で記載してください
-4. 1つの情報でも欠けている場合はエラーとなりますので、全ての情報を必ず含めてください"""
-
+2. 例文は必ず完全な文で記載してください
+"""
     human_template = """この画像から単語を抽出し、各単語について以下の4つの情報を必ず漏れなく含めてください。
 1つでも欠けている場合はエラーとなります：
 
@@ -89,12 +65,21 @@ def analyze_image_core(image_data: bytes) -> list[SpanishVocabulary]:
 2. part_of_speech (必須): 品詞（名詞、動詞、形容詞、副詞のいずれか）
 3. translation (必須): 日本語訳
 4. example (必須): スペイン語の例文（完全な文）
+"""
 
-画像: {image_url}"""
-
-    human_message = HumanMessagePromptTemplate.from_template(human_template)
+    human_message = HumanMessage(content=[
+        {
+            "type":"text",
+            "text":human_template
+        },
+        {
+            "type": "image_url", 
+            "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}
+        }
+    ])
     prompt = ChatPromptTemplate.from_messages([
         ("system", system),
+
         human_message
     ])
     structured_chat = chat.with_structured_output(ImageVocabularyResponse)
