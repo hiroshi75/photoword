@@ -18,43 +18,111 @@ def encode_image_data(image_data):
     """
     return base64.b64encode(image_data).decode('utf-8')
 
-def analyze_image(image_data):
+def analyze_image_core(image_data: bytes) -> list[SpanishVocabulary]:
+    """
+    Core function to analyze image using Google's Gemini model via Langchain.
+    This function is independent of any UI framework.
+    
+    Args:
+        image_data: Binary image data
+        
+    Returns:
+        list[SpanishVocabulary]: A list of Spanish vocabulary words found in the image
+        
+    Raises:
+        ValueError: If structured data parsing fails
+        TimeoutError: If the request times out
+        Exception: For any other unexpected errors
+    """
+    base64_image = encode_image_data(image_data)
+    image_template = {"image_url": {"url": f"data:image/png;base64,{base64_image}"}}
+    
+    chat = ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash",
+        temperature=0,
+        max_tokens=None,
+        timeout=30,  # 30-second timeout to prevent blocking
+        max_retries=2,
+    )
+    
+    system = """あなたは画像に写っているものから、スペイン語学習者のための単語帳を作成する専門家です。
+画像に写っているものを説明するのに必要なスペイン語の単語を抽出してください。
+
+以下の形式で単語リストを返してください：
+
+{
+  "vocabulary": [
+    {
+      "word": "silla",
+      "part_of_speech": "名詞",
+      "translation": "椅子",
+      "example": "Hay una silla junto a la mesa."
+    }
+  ]
+}
+
+各単語について、以下の4つの情報を必ず漏れなく含めてください：
+1. word: スペイン語の単語（例：mesa, silla, ventana）
+2. part_of_speech: 品詞（必ず「名詞」「動詞」「形容詞」「副詞」のいずれかを指定）
+3. translation: 日本語訳（例：テーブル、椅子、窓）
+4. example: その単語を使用したスペイン語の例文（必ず完全な文を記載）
+
+特に注目すべき要素：
+- 椅子 (silla)
+- テーブル (mesa)
+- 窓 (ventana)
+- 床 (suelo)
+- レストラン (restaurante)
+- ホール (sala)
+- ライト (luz)
+
+重要な注意点：
+1. 各単語について、必ず4つの情報（word, part_of_speech, translation, example）を全て含めてください
+2. 品詞は必ず「名詞」「動詞」「形容詞」「副詞」のいずれかを指定してください
+3. 例文は必ず完全な文で記載してください
+4. 1つの情報でも欠けている場合はエラーとなりますので、全ての情報を必ず含めてください"""
+
+    human_template = """この画像から単語を抽出し、各単語について以下の4つの情報を必ず漏れなく含めてください。
+1つでも欠けている場合はエラーとなります：
+
+1. word (必須): スペイン語の単語
+2. part_of_speech (必須): 品詞（名詞、動詞、形容詞、副詞のいずれか）
+3. translation (必須): 日本語訳
+4. example (必須): スペイン語の例文（完全な文）
+
+画像: {image_url}"""
+
+    human_message = HumanMessagePromptTemplate.from_template(human_template)
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", system),
+        human_message
+    ])
+    structured_chat = chat.with_structured_output(ImageVocabularyResponse)
+    chain = prompt | structured_chat
+    
+    result = chain.invoke({"image_url": image_template["image_url"]["url"]})
+    
+    if not result or not result.vocabulary:
+        return []
+        
+    return result.vocabulary  # Returns List[SpanishVocabulary]
+
+def analyze_image(image_data: bytes) -> list[SpanishVocabulary]:
     """
     Analyze image using Google's Gemini model via Langchain.
+    This function wraps analyze_image_core with Streamlit UI feedback.
     
     Args:
         image_data: Binary image data from uploaded file
         
     Returns:
-        list: A list of Spanish vocabulary words found in the image
+        list[SpanishVocabulary]: A list of Spanish vocabulary words found in the image
     """
     try:
-        base64_image = encode_image_data(image_data)
-        image_template = {"image_url": {"url": f"data:image/png;base64,{base64_image}"}}
-        
-        chat = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
-            temperature=0,
-            max_tokens=None,
-            timeout=30,  # 30-second timeout to prevent blocking
-            max_retries=2,
-        )
-        
-        system = """あなたは画像に写っているものから、スペイン語学習者のための単語帳を作るために、可能な限り名詞、形容詞、副詞、その状況で使える動詞に変換してその単語を抽出する専門家です。画像に写っているものを全て説明するのに必要なスペイン語の単語一覧として抽出してください。"""
-        human_prompt = "この画像に写っているものからスペイン語の単語を可能な限り抽出してください。"
-        human_message_template = HumanMessagePromptTemplate.from_template([human_prompt, image_template])
-        
-        prompt = ChatPromptTemplate.from_messages([("system", system), human_message_template])
-        structured_chat = chat.with_structured_output(ImageVocabularyResponse)
-        chain = prompt | structured_chat
-        
-        result = chain.invoke({})
-        
-        if not result or not result.vocabulary:
+        vocab = analyze_image_core(image_data)
+        if not vocab:
             st.warning("画像から単語を抽出できませんでした。別の画像を試してください。")
-            return []
-            
-        return result.vocabulary  # Returns List[SpanishVocabulary]
+        return vocab
     except ValueError as e:
         st.error("構造化データの解析に失敗しました。もう一度お試しください。")
         return []
