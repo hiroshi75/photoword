@@ -10,7 +10,9 @@ def test_analyze_image_core_restaurant():
         image_data = f.read()
     
     # Get vocabulary from image
+    print("start")
     result = analyze_image_core(image_data)
+    print(result)
     
     # Basic validation
     assert isinstance(result, list)

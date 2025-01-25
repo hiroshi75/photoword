@@ -35,7 +35,7 @@ def analyze_image_core(image_data: bytes) -> list[SpanishVocabulary]:
         Exception: For any other unexpected errors
     """
     base64_image = encode_image_data(image_data)
-    image_template = {"image_url": {"url": f"data:image/png;base64,{base64_image}"}}
+    image_template = {"url": f"data:image/png;base64,{base64_image}"}
     
     chat = ChatGoogleGenerativeAI(
         model="gemini-1.5-flash",
@@ -74,7 +74,7 @@ def analyze_image_core(image_data: bytes) -> list[SpanishVocabulary]:
         },
         {
             "type": "image_url", 
-            "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}
+            "image_url": image_template
         }
     ])
     prompt = ChatPromptTemplate.from_messages([
@@ -85,7 +85,7 @@ def analyze_image_core(image_data: bytes) -> list[SpanishVocabulary]:
     structured_chat = chat.with_structured_output(ImageVocabularyResponse)
     chain = prompt | structured_chat
     
-    result = chain.invoke({"image_url": image_template["image_url"]["url"]})
+    result = chain.invoke({})
     
     if not result or not result.vocabulary:
         return []
