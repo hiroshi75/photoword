@@ -33,7 +33,7 @@ def analyze_image(image_data):
         image_template = {"image_url": {"url": f"data:image/png;base64,{base64_image}"}}
         
         chat = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash-8b",
+            model="gemini-1.5-flash",
             temperature=0,
             max_tokens=None,
             timeout=30,  # 30-second timeout to prevent blocking
