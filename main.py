@@ -189,7 +189,7 @@ def main():
         # Display uploaded image and analyze
         if uploaded_file is not None:
             image_data = uploaded_file.getvalue()
-            st.image(uploaded_file)
+            st.image(uploaded_file, use_container_width=True)
             vocab_list = analyze_image(image_data)
             
             if vocab_list:
@@ -202,15 +202,41 @@ def main():
         # Display timeline entries with styling
         st.markdown("## 📸 タイムライン")
         
-        # Add date filter widgets with better styling
+        # Initialize session state for filters
+        if "search_term" not in st.session_state:
+            st.session_state.search_term = ""
+        if "start_date" not in st.session_state:
+            st.session_state.start_date = None
+        if "end_date" not in st.session_state:
+            st.session_state.end_date = None
+        if "page_size" not in st.session_state:
+            st.session_state.page_size = 5
+        if "page_number" not in st.session_state:
+            st.session_state.page_number = 1
+
+        # Add search and date filter widgets with better styling
         st.markdown("### 🔍 フィルター")
         filter_container = st.container()
         with filter_container:
+            # Add search input
+            st.text_input(
+                "単語検索 (スペイン語または日本語)",
+                placeholder="検索したい単語を入力...",
+                key="search_term"
+            )
+            
+            # Date range filters
             col1, col2 = st.columns(2)
             with col1:
-                start_date = st.date_input("開始日", value=None, key="start_date")
+                st.date_input(
+                    "開始日",
+                    key="start_date"
+                )
             with col2:
-                end_date = st.date_input("終了日", value=None, key="end_date")
+                st.date_input(
+                    "終了日",
+                    key="end_date"
+                )
         
         # Add pagination controls with better styling
         st.markdown("### 📄 ページ設定")
@@ -218,32 +244,35 @@ def main():
         with pagination_container:
             col1, col2 = st.columns([1, 3])
             with col1:
-                page_size = st.selectbox(
+                st.selectbox(
                     "表示件数",
                     options=[5, 10, 20],
-                    index=0,
                     key="page_size"
                 )
             with col2:
-                page_number = st.number_input(
+                st.number_input(
                     "ページ番号",
                     min_value=1,
-                    value=1,
                     step=1,
                     key="page_number"
                 )
-        skip = (page_number - 1) * page_size
+        skip = (st.session_state.page_number - 1) * st.session_state.page_size
         
-        # Get timeline entries
+        # Get timeline entries with search
         timeline_entries = get_timeline_entries(
             db,
             user.id,
             skip=skip,
-            limit=page_size,
-            start_date=start_date if start_date else None,
-            end_date=end_date if end_date else None
+            limit=st.session_state.page_size,
+            start_date=st.session_state.start_date if st.session_state.start_date else None,
+            end_date=st.session_state.end_date if st.session_state.end_date else None,
+            search_term=st.session_state.search_term if st.session_state.search_term else None
         )
         
+        # Initialize detail view state
+        if "show_detail" not in st.session_state:
+            st.session_state["show_detail"] = None
+
         # Display timeline entries with improved styling
         if timeline_entries:
             for entry in timeline_entries:
@@ -251,14 +280,14 @@ def main():
                     f"📸 {entry.created_at.strftime('%Y年%m月%d日 %H:%M')}",
                     expanded=True
                 ):
-                    # Create columns for image and vocabulary
-                    img_col, vocab_col = st.columns([2, 3])
+                    # Create columns for image, vocabulary, and detail button
+                    img_col, vocab_col, btn_col = st.columns([2, 3, 1])
                     
                     # Display image in left column
                     with img_col:
                         st.image(entry.image_data, use_container_width=True)
                     
-                    # Display vocabulary items in right column
+                    # Display vocabulary items in middle column
                     with vocab_col:
                         for vocab in entry.vocabulary_entries:
                             markdown_text = f"""
@@ -268,6 +297,35 @@ def main():
                             ---
                             """
                             st.markdown(markdown_text)
+                    
+                    # Add detail view button in right column
+                    with btn_col:
+                        if st.button("詳細を表示", key=f"detail_btn_{entry.id}"):
+                            st.session_state["show_detail"] = entry.id
+                
+                # Show detail modal if this entry is selected
+                if st.session_state["show_detail"] == entry.id:
+                    with st.container():
+                        st.markdown("---")
+                        st.markdown("## 📝 詳細表示")
+                        
+                        # Display full-size image
+                        st.image(entry.image_data, use_container_width=True)
+                        
+                        # Display comprehensive vocabulary information
+                        st.markdown("### 📚 単語リスト")
+                        for vocab in entry.vocabulary_entries:
+                            st.markdown(f"""
+                            #### {vocab.spanish_word}
+                            - **品詞**: {vocab.part_of_speech}
+                            - **日本語**: {vocab.japanese_translation}
+                            - **例文**: {vocab.example_sentence}
+                            """)
+                        
+                        # Add close button
+                        if st.button("閉じる", key=f"close_btn_{entry.id}"):
+                            st.session_state["show_detail"] = None
+                        st.markdown("---")
         else:
             st.info("表示するエントリーがありません。新しい画像をアップロードしてください。")
     except Exception as e:
