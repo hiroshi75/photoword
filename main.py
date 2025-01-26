@@ -279,6 +279,10 @@ def main():
             search_term=search_term if search_term else None
         )
         
+        # Initialize detail view state
+        if "show_detail" not in st.session_state:
+            st.session_state["show_detail"] = None
+
         # Display timeline entries with improved styling
         if timeline_entries:
             for entry in timeline_entries:
@@ -286,14 +290,14 @@ def main():
                     f"📸 {entry.created_at.strftime('%Y年%m月%d日 %H:%M')}",
                     expanded=True
                 ):
-                    # Create columns for image and vocabulary
-                    img_col, vocab_col = st.columns([2, 3])
+                    # Create columns for image, vocabulary, and detail button
+                    img_col, vocab_col, btn_col = st.columns([2, 3, 1])
                     
                     # Display image in left column
                     with img_col:
                         st.image(entry.image_data, use_container_width=True)
                     
-                    # Display vocabulary items in right column
+                    # Display vocabulary items in middle column
                     with vocab_col:
                         for vocab in entry.vocabulary_entries:
                             markdown_text = f"""
@@ -303,6 +307,35 @@ def main():
                             ---
                             """
                             st.markdown(markdown_text)
+                    
+                    # Add detail view button in right column
+                    with btn_col:
+                        if st.button("詳細を表示", key=f"detail_btn_{entry.id}"):
+                            st.session_state["show_detail"] = entry.id
+                
+                # Show detail modal if this entry is selected
+                if st.session_state["show_detail"] == entry.id:
+                    with st.container():
+                        st.markdown("---")
+                        st.markdown("## 📝 詳細表示")
+                        
+                        # Display full-size image
+                        st.image(entry.image_data, use_container_width=True)
+                        
+                        # Display comprehensive vocabulary information
+                        st.markdown("### 📚 単語リスト")
+                        for vocab in entry.vocabulary_entries:
+                            st.markdown(f"""
+                            #### {vocab.spanish_word}
+                            - **品詞**: {vocab.part_of_speech}
+                            - **日本語**: {vocab.japanese_translation}
+                            - **例文**: {vocab.example_sentence}
+                            """)
+                        
+                        # Add close button
+                        if st.button("閉じる", key=f"close_btn_{entry.id}"):
+                            st.session_state["show_detail"] = None
+                        st.markdown("---")
         else:
             st.info("表示するエントリーがありません。新しい画像をアップロードしてください。")
     except Exception as e:
