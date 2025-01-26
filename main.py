@@ -5,10 +5,12 @@ from langchain_core.messages import HumanMessage
 import base64
 import os
 from typing import List
+from datetime import datetime
 from models import SpanishVocabulary, ImageVocabularyResponse
 from db import SessionLocal
 from models_db import User, Image, VocabularyEntry
 from sqlalchemy.orm import Session
+from timeline import TimelineEntry, get_timeline_entries
 
 def encode_image_data(image_data):
     """
@@ -195,15 +197,77 @@ def main():
                 image = save_image(db, user.id, image_data)
                 save_vocabulary(db, user.id, image.id, vocab_list)
                 
-                st.subheader("抽出された単語:")
-                for vocab_item in vocab_list:
-                    # Display vocabulary item in markdown format with bullet points
-                    markdown_text = f"""
-                    ### {vocab_item.word}
-                    - [{vocab_item.part_of_speech}]{vocab_item.translation}
-                    - {vocab_item.example_sentence}
-                    """
-                    st.markdown(markdown_text)
+                # Display timeline entries with styling
+                st.markdown("## 📸 タイムライン")
+                
+                # Add date filter widgets with better styling
+                st.markdown("### 🔍 フィルター")
+                filter_container = st.container()
+                with filter_container:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        start_date = st.date_input("開始日", value=None, key="start_date")
+                    with col2:
+                        end_date = st.date_input("終了日", value=None, key="end_date")
+                
+                # Add pagination controls with better styling
+                st.markdown("### 📄 ページ設定")
+                pagination_container = st.container()
+                with pagination_container:
+                    col1, col2 = st.columns([1, 3])
+                    with col1:
+                        page_size = st.selectbox(
+                            "表示件数",
+                            options=[5, 10, 20],
+                            index=0,
+                            key="page_size"
+                        )
+                    with col2:
+                        page_number = st.number_input(
+                            "ページ番号",
+                            min_value=1,
+                            value=1,
+                            step=1,
+                            key="page_number"
+                        )
+                skip = (page_number - 1) * page_size
+                
+                # Get timeline entries
+                timeline_entries = get_timeline_entries(
+                    db,
+                    user.id,
+                    skip=skip,
+                    limit=page_size,
+                    start_date=start_date if start_date else None,
+                    end_date=end_date if end_date else None
+                )
+                
+                # Display timeline entries with improved styling
+                if timeline_entries:
+                    for entry in timeline_entries:
+                        with st.expander(
+                            f"📸 {entry.created_at.strftime('%Y年%m月%d日 %H:%M')}",
+                            expanded=True
+                        ):
+                            # Create columns for image and vocabulary
+                            img_col, vocab_col = st.columns([2, 3])
+                            
+                            # Display image in left column
+                            with img_col:
+                                st.image(entry.image_data, use_column_width=True)
+                            
+                            # Display vocabulary items in right column
+                            with vocab_col:
+                                for vocab in entry.vocabulary_entries:
+                                    markdown_text = f"""
+                                    ### 🇪🇸 {vocab.spanish_word}
+                                    - 📚 [{vocab.part_of_speech}] {vocab.japanese_translation}
+                                    - 💭 {vocab.example_sentence}
+                                    ---
+                                    """
+                                    st.markdown(markdown_text)
+                else:
+                    st.info("表示するエントリーがありません。新しい画像をアップロードしてください。")
             else:
                 st.write("単語を抽出できませんでした。")
     except Exception as e:
