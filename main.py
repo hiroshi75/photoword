@@ -179,33 +179,36 @@ def main():
         
         # File uploader widget
         uploaded_file = st.file_uploader(
-        "写真をアップロードしてください",
-        type=["jpg", "jpeg", "png"],
-        help="JPG、JPEG、またはPNG形式の画像ファイルをアップロードしてください。"
-    )
-    
-    # Display uploaded image and analyze
-    if uploaded_file is not None:
-        image_data = uploaded_file.getvalue()
-        st.image(uploaded_file)
-        vocab_list = analyze_image(image_data)
+            "写真をアップロードしてください",
+            type=["jpg", "jpeg", "png"],
+            help="JPG、JPEG、またはPNG形式の画像ファイルをアップロードしてください。"
+        )
         
-        if vocab_list:
-            # Save image and vocabulary to database
-            image = save_image(db, user.id, image_data)
-            save_vocabulary(db, user.id, image.id, vocab_list)
+        # Display uploaded image and analyze
+        if uploaded_file is not None:
+            image_data = uploaded_file.getvalue()
+            st.image(uploaded_file)
+            vocab_list = analyze_image(image_data)
             
-            st.subheader("抽出された単語:")
-            for vocab_item in vocab_list:
-                # Display vocabulary item in markdown format with bullet points
-                markdown_text = f"""
-                ### {vocab_item.word}
-                - [{vocab_item.part_of_speech}]{vocab_item.translation}
-                - {vocab_item.example_sentence}
-                """
-                st.markdown(markdown_text)
-        else:
-            st.write("単語を抽出できませんでした。")
+            if vocab_list:
+                # Save image and vocabulary to database
+                image = save_image(db, user.id, image_data)
+                save_vocabulary(db, user.id, image.id, vocab_list)
+                
+                st.subheader("抽出された単語:")
+                for vocab_item in vocab_list:
+                    # Display vocabulary item in markdown format with bullet points
+                    markdown_text = f"""
+                    ### {vocab_item.word}
+                    - [{vocab_item.part_of_speech}]{vocab_item.translation}
+                    - {vocab_item.example_sentence}
+                    """
+                    st.markdown(markdown_text)
+            else:
+                st.write("単語を抽出できませんでした。")
+    except Exception as e:
+        st.error(f"エラーが発生しました: {str(e)}")
+        raise
 
 
 if __name__ == "__main__":
