@@ -6,6 +6,9 @@ import base64
 import os
 from typing import List
 from models import SpanishVocabulary, ImageVocabularyResponse
+from db import SessionLocal
+from models_db import User, Image, VocabularyEntry
+from sqlalchemy.orm import Session
 
 def encode_image_data(image_data):
     """
@@ -118,6 +121,48 @@ def analyze_image(image_data: bytes) -> list[SpanishVocabulary]:
         st.error(f"予期せぬエラーが発生しました: {str(e)}")
         return []
 
+def get_or_create_user(db: Session, username: str = "test_user") -> User:
+    """Get or create a test user for development."""
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        user = User(username=username)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
+
+def save_image(db: Session, user_id: int, image_data: bytes) -> Image:
+    """Save uploaded image to database."""
+    try:
+        image = Image(user_id=user_id, image_data=image_data)
+        db.add(image)
+        db.commit()
+        db.refresh(image)
+        return image
+    except Exception as e:
+        db.rollback()
+        st.error(f"画像の保存中にエラーが発生しました: {str(e)}")
+        raise
+
+def save_vocabulary(db: Session, user_id: int, image_id: int, vocab_items: List[SpanishVocabulary]):
+    """Save vocabulary entries to database."""
+    try:
+        for item in vocab_items:
+            vocab_entry = VocabularyEntry(
+                user_id=user_id,
+                image_id=image_id,
+                spanish_word=item.word,
+                part_of_speech=item.part_of_speech,
+                japanese_translation=item.translation,
+                example_sentence=item.example_sentence
+            )
+            db.add(vocab_entry)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        st.error(f"単語の保存中にエラーが発生しました: {str(e)}")
+        raise
+
 def main():
     """
     Main function for the Photoword application.
@@ -126,8 +171,14 @@ def main():
     st.title("Photoword - スペイン語単語帳")
     st.subheader("写真をアップロードして単語帳を作成")
     
-    # File uploader widget
-    uploaded_file = st.file_uploader(
+    # Initialize database session
+    db = SessionLocal()
+    try:
+        # Get or create test user
+        user = get_or_create_user(db)
+        
+        # File uploader widget
+        uploaded_file = st.file_uploader(
         "写真をアップロードしてください",
         type=["jpg", "jpeg", "png"],
         help="JPG、JPEG、またはPNG形式の画像ファイルをアップロードしてください。"
@@ -135,10 +186,15 @@ def main():
     
     # Display uploaded image and analyze
     if uploaded_file is not None:
+        image_data = uploaded_file.getvalue()
         st.image(uploaded_file)
-        vocab_list = analyze_image(uploaded_file.getvalue())
+        vocab_list = analyze_image(image_data)
         
         if vocab_list:
+            # Save image and vocabulary to database
+            image = save_image(db, user.id, image_data)
+            save_vocabulary(db, user.id, image.id, vocab_list)
+            
             st.subheader("抽出された単語:")
             for vocab_item in vocab_list:
                 # Display vocabulary item in markdown format with bullet points
@@ -153,4 +209,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    finally:
+        # Ensure database session is closed
+        if 'db' in locals():
+            db.close()
