@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, or_
 from models_db import User, Image, VocabularyEntry
 from datetime import datetime
 
@@ -24,10 +24,11 @@ def get_timeline_entries(
     skip: int = 0,
     limit: int = 10,
     start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None,
+    search_term: Optional[str] = None
 ) -> List[TimelineEntry]:
     """
-    Retrieve timeline entries for a user with pagination and date filtering.
+    Retrieve timeline entries for a user with pagination, date filtering, and search functionality.
     
     Args:
         db: Database session
@@ -36,12 +37,24 @@ def get_timeline_entries(
         limit: Maximum number of entries to return
         start_date: Optional start date filter
         end_date: Optional end date filter
+        search_term: Optional search term to filter vocabulary by Spanish or Japanese text
     
     Returns:
-        List of TimelineEntry objects
+        List of TimelineEntry objects filtered by the given criteria
     """
     # Base query for images
     query = db.query(Image).filter(Image.user_id == user_id)
+    
+    # Apply search filter if provided
+    if search_term:
+        # Join with VocabularyEntry to search in vocabulary
+        query = query.join(VocabularyEntry, VocabularyEntry.image_id == Image.id)
+        query = query.filter(
+            or_(
+                VocabularyEntry.spanish_word.ilike(f"%{search_term}%"),
+                VocabularyEntry.japanese_translation.ilike(f"%{search_term}%")
+            )
+        ).distinct()
     
     # Apply date filters if provided
     if start_date:
