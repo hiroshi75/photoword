@@ -262,7 +262,7 @@ def main():
                     with vocab_col:
                         for vocab in entry.vocabulary_entries:
                             markdown_text = f"""
-                            ### 🇪🇸 {vocab.spanish_word}
+                            ### {vocab.spanish_word}
                             - 📚 [{vocab.part_of_speech}] {vocab.japanese_translation}
                             - 💭 {vocab.example_sentence}
                             ---
