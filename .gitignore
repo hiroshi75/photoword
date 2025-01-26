@@ -2,3 +2,19 @@
 .venv
 .env
 __pycache__
+
+# Database
+*.db
+*.sqlite3
+
+# Backup files
+*.bak
+
+# Test files
+test_changes.py
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
