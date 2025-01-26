@@ -189,7 +189,7 @@ def main():
         # Display uploaded image and analyze
         if uploaded_file is not None:
             image_data = uploaded_file.getvalue()
-            st.image(uploaded_file)
+            st.image(uploaded_file, use_container_width=True)
             vocab_list = analyze_image(image_data)
             
             if vocab_list:
@@ -204,45 +204,39 @@ def main():
         
         # Initialize session state for filters
         if "search_term" not in st.session_state:
-            st.session_state["search_term"] = ""
+            st.session_state.search_term = ""
         if "start_date" not in st.session_state:
-            st.session_state["start_date"] = None
+            st.session_state.start_date = None
         if "end_date" not in st.session_state:
-            st.session_state["end_date"] = None
+            st.session_state.end_date = None
         if "page_size" not in st.session_state:
-            st.session_state["page_size"] = 5
+            st.session_state.page_size = 5
         if "page_number" not in st.session_state:
-            st.session_state["page_number"] = 1
+            st.session_state.page_number = 1
 
         # Add search and date filter widgets with better styling
         st.markdown("### 🔍 フィルター")
         filter_container = st.container()
         with filter_container:
             # Add search input
-            search_term = st.text_input(
+            st.text_input(
                 "単語検索 (スペイン語または日本語)",
-                value=st.session_state["search_term"],
                 placeholder="検索したい単語を入力...",
-                key="search_input"
+                key="search_term"
             )
-            st.session_state["search_term"] = search_term
             
             # Date range filters
             col1, col2 = st.columns(2)
             with col1:
-                start_date = st.date_input(
+                st.date_input(
                     "開始日",
-                    value=st.session_state["start_date"],
                     key="start_date"
                 )
-                st.session_state["start_date"] = start_date
             with col2:
-                end_date = st.date_input(
+                st.date_input(
                     "終了日",
-                    value=st.session_state["end_date"],
                     key="end_date"
                 )
-                st.session_state["end_date"] = end_date
         
         # Add pagination controls with better styling
         st.markdown("### 📄 ページ設定")
@@ -250,33 +244,29 @@ def main():
         with pagination_container:
             col1, col2 = st.columns([1, 3])
             with col1:
-                page_size = st.selectbox(
+                st.selectbox(
                     "表示件数",
                     options=[5, 10, 20],
-                    index=options=[5, 10, 20].index(st.session_state["page_size"]),
                     key="page_size"
                 )
-                st.session_state["page_size"] = page_size
             with col2:
-                page_number = st.number_input(
+                st.number_input(
                     "ページ番号",
                     min_value=1,
-                    value=st.session_state["page_number"],
                     step=1,
                     key="page_number"
                 )
-                st.session_state["page_number"] = page_number
-        skip = (page_number - 1) * page_size
+        skip = (st.session_state.page_number - 1) * st.session_state.page_size
         
         # Get timeline entries with search
         timeline_entries = get_timeline_entries(
             db,
             user.id,
             skip=skip,
-            limit=page_size,
-            start_date=start_date if start_date else None,
-            end_date=end_date if end_date else None,
-            search_term=search_term if search_term else None
+            limit=st.session_state.page_size,
+            start_date=st.session_state.start_date if st.session_state.start_date else None,
+            end_date=st.session_state.end_date if st.session_state.end_date else None,
+            search_term=st.session_state.search_term if st.session_state.search_term else None
         )
         
         # Initialize detail view state
