@@ -222,44 +222,20 @@ def main():
         # Get or create test user
         user = get_or_create_user(db)
         
-        # Add floating button using float_box with improved styling
-        float_box(
-            markdown="""
-            <button 
-                onclick='parent.document.querySelector(`[devinid="7"]`).click()'
-                style='
-                    background-color: #4CAF50;
-                    color: white;
-                    padding: 12px 24px;
-                    border: none;
-                    border-radius: 25px;
-                    cursor: pointer;
-                    font-size: 16px;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-                    transition: all 0.3s ease;
-                '
-                onmouseover='this.style.backgroundColor="#45a049"'
-                onmouseout='this.style.backgroundColor="#4CAF50"'
-            >
-                <span style='font-size: 20px;'>➕</span>
-                <span>画像を追加</span>
-            </button>
-            """,
-            width="auto",
-            height="auto",
-            right="20px",
-            bottom="20px",
-            background="transparent",
-            border="none",
-            shadow=0
+        # Add floating button using float_button
+        float_button(
+            "画像を追加",
+            icon="➕",
+            key="add_image_button",
+            bgcolor="#4CAF50",
+            color="white",
+            hover_bgcolor="#45a049",
+            shadow=True,
+            padding="12px 24px",
+            border_radius="25px",
+            font_size="16px",
+            on_click=lambda: setattr(st.session_state, "show_modal", True)
         )
-        
-        # Hidden button to handle click event
-        if st.button("", key="add_image_button", type="primary"):
-            st.session_state.show_modal = True
         
         # Modal dialog for image upload
         if st.session_state.show_modal:
