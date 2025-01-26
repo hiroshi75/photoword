@@ -202,13 +202,23 @@ def main():
         # Display timeline entries with styling
         st.markdown("## 📸 タイムライン")
         
+        # Initialize session state for filters
+        if "search_term" not in st.session_state:
+            st.session_state["search_term"] = ""
+        if "start_date" not in st.session_state:
+            st.session_state["start_date"] = None
+        if "end_date" not in st.session_state:
+            st.session_state["end_date"] = None
+        if "page_size" not in st.session_state:
+            st.session_state["page_size"] = 5
+        if "page_number" not in st.session_state:
+            st.session_state["page_number"] = 1
+
         # Add search and date filter widgets with better styling
         st.markdown("### 🔍 フィルター")
         filter_container = st.container()
         with filter_container:
             # Add search input
-            if "search_term" not in st.session_state:
-                st.session_state["search_term"] = ""
             search_term = st.text_input(
                 "単語検索 (スペイン語または日本語)",
                 value=st.session_state["search_term"],
@@ -220,9 +230,19 @@ def main():
             # Date range filters
             col1, col2 = st.columns(2)
             with col1:
-                start_date = st.date_input("開始日", value=None, key="start_date")
+                start_date = st.date_input(
+                    "開始日",
+                    value=st.session_state["start_date"],
+                    key="start_date"
+                )
+                st.session_state["start_date"] = start_date
             with col2:
-                end_date = st.date_input("終了日", value=None, key="end_date")
+                end_date = st.date_input(
+                    "終了日",
+                    value=st.session_state["end_date"],
+                    key="end_date"
+                )
+                st.session_state["end_date"] = end_date
         
         # Add pagination controls with better styling
         st.markdown("### 📄 ページ設定")
@@ -233,17 +253,19 @@ def main():
                 page_size = st.selectbox(
                     "表示件数",
                     options=[5, 10, 20],
-                    index=0,
+                    index=options=[5, 10, 20].index(st.session_state["page_size"]),
                     key="page_size"
                 )
+                st.session_state["page_size"] = page_size
             with col2:
                 page_number = st.number_input(
                     "ページ番号",
                     min_value=1,
-                    value=1,
+                    value=st.session_state["page_number"],
                     step=1,
                     key="page_number"
                 )
+                st.session_state["page_number"] = page_number
         skip = (page_number - 1) * page_size
         
         # Get timeline entries with search
