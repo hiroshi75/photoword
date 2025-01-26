@@ -5,7 +5,7 @@ from typing import List
 from pydantic import BaseModel, Field
 
 class SpanishVocabulary(BaseModel):
-    """スペイン語単語データのモデル"""
+    """抽出されたスペイン語の単語の情報"""
     word: str = Field(
         description="スペイン語の単語",
         min_length=1
@@ -18,46 +18,14 @@ class SpanishVocabulary(BaseModel):
         description="日本語訳",
         min_length=1
     )
-    example: str = Field(
+    example_sentence: str = Field(
         description="スペイン語の例文",
         min_length=1
     )
 
-    class Config:
-        """モデルの設定"""
-        json_schema_extra = {
-            "example": {
-                "word": "manzana",
-                "part_of_speech": "名詞",
-                "translation": "りんご",
-                "example": "La manzana está fresca."
-            }
-        }
-
 class ImageVocabularyResponse(BaseModel):
-    """画像から抽出された単語リストのレスポンスモデル"""
+    """画像から抽出された単語リスト"""
     vocabulary: List[SpanishVocabulary] = Field(
-        description="抽出された単語リスト",
-        min_items=1
+        description="抽出されたSpanishVocabularyのリスト",
+        min_length=1
     )
-
-    class Config:
-        """モデルの設定"""
-        json_schema_extra = {
-            "example": {
-                "vocabulary": [
-                    {
-                        "word": "manzana",
-                        "part_of_speech": "名詞",
-                        "translation": "りんご",
-                        "example": "La manzana está fresca."
-                    },
-                    {
-                        "word": "comer",
-                        "part_of_speech": "動詞",
-                        "translation": "食べる",
-                        "example": "Me gusta comer manzanas."
-                    }
-                ]
-            }
-        }

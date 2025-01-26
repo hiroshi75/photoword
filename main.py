@@ -1,9 +1,10 @@
 import streamlit as st
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_aws import ChatBedrock
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage
 import base64
 import os
+from typing import List
 from models import SpanishVocabulary, ImageVocabularyResponse
 
 def encode_image_data(image_data):
@@ -18,7 +19,7 @@ def encode_image_data(image_data):
     """
     return base64.b64encode(image_data).decode('utf-8')
 
-def analyze_image_core(image_data: bytes) -> list[SpanishVocabulary]:
+def analyze_image_core(image_data: bytes) -> List[SpanishVocabulary]:
     """
     Core function to analyze image using Google's Gemini model via Langchain.
     This function is independent of any UI framework.
@@ -37,55 +38,53 @@ def analyze_image_core(image_data: bytes) -> list[SpanishVocabulary]:
     base64_image = encode_image_data(image_data)
     image_template = {"url": f"data:image/png;base64,{base64_image}"}
     
-    chat = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
-        temperature=0,
-        max_tokens=None,
-        timeout=30,  # 30-second timeout to prevent blocking
-        max_retries=2,
+    chat = ChatBedrock(
+        model_id="anthropic.claude-3-haiku-20240307-v1:0",
+        model_kwargs=dict(temperature=0),
+        region="us-east-1",
+        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"]
     )
     
-    system = """あなたは画像に写っているものから、スペイン語学習者のための単語帳を作成する専門家です。
-画像に写っているものを説明するのに必要なスペイン語の単語を抽出してください。
+    human_template = """
+上記の写真をスペイン語で表現したいというスペイン語学習者がいます。
 
-各単語について、以下の4つの情報を必ず漏れなく含めてください：
-1. word: スペイン語の単語（例：mesa, silla, ventana）
-2. part_of_speech: 品詞（必ず「名詞」「動詞」「形容詞」「副詞」のいずれかを指定）
-3. translation: 日本語訳（例：テーブル、椅子、窓）
-4. example: その単語を使用したスペイン語の例文（必ず完全な文を記載）
+あなたは上記の画像に写っている状況を説明するのに必要なスペイン語の単語や表現のリストを作ってあげてください。上記の写真に写っているものの名前などを、スペイン語・品詞・日本語・スペイン語例文の４つのデータのセットとして列挙してほしいです。
+
+以下のようなデータ構成でリストを作ってください。(配列の中に、さらに４つの属性を持つデータとして作ってください。)
+{
+    vocabulary: [{
+        word: スペイン語の単語
+        part_of_speech: 品詞（必ず「名詞」「動詞」「形容詞」「副詞」のなどを指定）
+        translation: 日本語訳
+        example_sentence: その単語を使用したスペイン語の例文（必ず完全な文を記載）
+    }, ...] //単語数分繰り返す
+}
 
 重要な注意点：
-1. 各単語について、必ず4つの情報（word, part_of_speech, translation, example）を全て含めてください
+1. 各単語について、必ず4つの情報（word, part_of_speech, translation, example_sentence
 2. 例文は必ず完全な文で記載してください
-"""
-    human_template = """この画像から単語を抽出し、各単語について以下の4つの情報を必ず漏れなく含めてください。
-1つでも欠けている場合はエラーとなります：
-
-1. word (必須): スペイン語の単語
-2. part_of_speech (必須): 品詞（名詞、動詞、形容詞、副詞のいずれか）
-3. translation (必須): 日本語訳
-4. example (必須): スペイン語の例文（完全な文）
 """
 
     human_message = HumanMessage(content=[
-        {
-            "type":"text",
-            "text":human_template
-        },
+        
         {
             "type": "image_url", 
             "image_url": image_template
+        },
+        {
+            "type":"text",
+            "text":human_template
         }
     ])
     prompt = ChatPromptTemplate.from_messages([
-        ("system", system),
-
         human_message
     ])
     structured_chat = chat.with_structured_output(ImageVocabularyResponse)
     chain = prompt | structured_chat
     
     result = chain.invoke({})
+    print(result)
     
     if not result or not result.vocabulary:
         return []
@@ -143,13 +142,14 @@ def main():
             for vocab_item in vocab_list:
                 # Create a 3-row table for each vocabulary item
                 data = [
-                    [f"**{vocab_item.word}**"],  # 1行目: スペイン語の単語（太字で目立たせる）
+                    [f"{vocab_item.word}"],  # 1行目: スペイン語の単語
                     [f"{vocab_item.part_of_speech}, {vocab_item.translation}"],  # 2行目: 品詞、日本語の意味
-                    [vocab_item.example]  # 3行目: 例文
+                    [vocab_item.example_sentence]  # 3行目: 例文
                 ]
                 st.table(data)
         else:
             st.write("単語を抽出できませんでした。")
+
 
 if __name__ == "__main__":
     main()
