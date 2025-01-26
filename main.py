@@ -201,8 +201,11 @@ def main():
     Main function for the Photoword application.
     Provides a simple interface for uploading photos and analyzing them for Spanish vocabulary.
     """
-    # Initialize floating functionality
+    # Initialize floating functionality and session states
     float_init()
+    
+    if "show_modal" not in st.session_state:
+        st.session_state.show_modal = False
     
     st.title("Photoword - スペイン語単語帳")
     
@@ -222,20 +225,19 @@ def main():
         # Get or create test user
         user = get_or_create_user(db)
         
-        # Add floating button using float_button
-        float_button(
-            "画像を追加",
-            icon="➕",
-            key="add_image_button",
-            bgcolor="#4CAF50",
-            color="white",
-            hover_bgcolor="#45a049",
-            shadow=True,
-            padding="12px 24px",
-            border_radius="25px",
-            font_size="16px",
-            on_click=lambda: setattr(st.session_state, "show_modal", True)
-        )
+        # Add floating button using float_box
+        if float_box(
+            "### 画像を追加 ➕",
+            width="120px",
+            height="50px",
+            right="20px",
+            bottom="20px",
+            background="#4CAF50",
+            shadow=3,
+            transition=2,
+            css="cursor: pointer; color: white; text-align: center; padding: 10px; border-radius: 25px; &:hover { background-color: #45a049 !important; }"
+        ):
+            st.session_state.show_modal = True
         
         # Modal dialog for image upload
         if st.session_state.show_modal:
