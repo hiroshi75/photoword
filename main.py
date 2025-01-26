@@ -202,10 +202,22 @@ def main():
         # Display timeline entries with styling
         st.markdown("## 📸 タイムライン")
         
-        # Add date filter widgets with better styling
+        # Add search and date filter widgets with better styling
         st.markdown("### 🔍 フィルター")
         filter_container = st.container()
         with filter_container:
+            # Add search input
+            if "search_term" not in st.session_state:
+                st.session_state["search_term"] = ""
+            search_term = st.text_input(
+                "単語検索 (スペイン語または日本語)",
+                value=st.session_state["search_term"],
+                placeholder="検索したい単語を入力...",
+                key="search_input"
+            )
+            st.session_state["search_term"] = search_term
+            
+            # Date range filters
             col1, col2 = st.columns(2)
             with col1:
                 start_date = st.date_input("開始日", value=None, key="start_date")
@@ -234,14 +246,15 @@ def main():
                 )
         skip = (page_number - 1) * page_size
         
-        # Get timeline entries
+        # Get timeline entries with search
         timeline_entries = get_timeline_entries(
             db,
             user.id,
             skip=skip,
             limit=page_size,
             start_date=start_date if start_date else None,
-            end_date=end_date if end_date else None
+            end_date=end_date if end_date else None,
+            search_term=search_term if search_term else None
         )
         
         # Display timeline entries with improved styling
