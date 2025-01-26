@@ -1,9 +1,10 @@
 import streamlit as st
-from langchain_aws import ChatBedrock
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.messages import HumanMessage
+import boto3
 import base64
+import hashlib
 import os
+import json
+import re
 from typing import List
 from datetime import datetime
 from models import SpanishVocabulary, ImageVocabularyResponse
@@ -11,6 +12,13 @@ from db import SessionLocal
 from models_db import User, Image, VocabularyEntry
 from sqlalchemy.orm import Session
 from timeline import TimelineEntry, get_timeline_entries
+
+bedrock = boto3.client(
+    service_name='bedrock-runtime',
+    region_name='us-east-1',
+    aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+    aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"]
+)
 
 def encode_image_data(image_data):
     """
@@ -26,7 +34,7 @@ def encode_image_data(image_data):
 
 def analyze_image_core(image_data: bytes) -> List[SpanishVocabulary]:
     """
-    Core function to analyze image using Google's Gemini model via Langchain.
+    Core function to analyze image using Claude Haiku via AWS Bedrock.
     This function is independent of any UI framework.
     
     Args:
@@ -42,60 +50,82 @@ def analyze_image_core(image_data: bytes) -> List[SpanishVocabulary]:
     """
     base64_image = encode_image_data(image_data)
     
-    chat = ChatBedrock(
-        aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
-        model_id="anthropic.claude-3-haiku-20240307-v1:0",
-        region_name="us-east-1",
-        model_kwargs=dict(temperature=0)
-    )
-    
-    human_template = """
+    prompt = """
 上記の写真をスペイン語で表現したいというスペイン語学習者がいます。
 
 あなたは上記の画像に写っている状況を説明するのに必要なスペイン語の単語や表現のリストを作ってあげてください。上記の写真に写っているものの名前などを、スペイン語・品詞・日本語・スペイン語例文の４つのデータのセットとして列挙してほしいです。
 
 以下のようなデータ構成でリストを作ってください。(配列の中に、さらに４つの属性を持つデータとして作ってください。)
 {
-    vocabulary: [{
-        word: スペイン語の単語
-        part_of_speech: 品詞（必ず「名詞」「動詞」「形容詞」「副詞」のなどを指定）
-        translation: 日本語訳
-        example_sentence: その単語を使用したスペイン語の例文（必ず完全な文を記載）
-    }, ...] //単語数分繰り返す
+    "vocabulary": [{
+        "word": "スペイン語の単語",
+        "part_of_speech": "品詞（必ず「名詞」「動詞」「形容詞」「副詞」のなどを指定）",
+        "translation": "日本語訳",
+        "example_sentence": "その単語を使用したスペイン語の例文（必ず完全な文を記載）"
+    }]
 }
 
 重要な注意点：
-1. 各単語について、必ず4つの情報（word, part_of_speech, translation, example_sentence
+1. 各単語について、必ず4つの情報（word, part_of_speech, translation, example_sentence）を含めてください
 2. 例文は必ず完全な文で記載してください
+3. JSONの形式を厳密に守ってください
 """
-
-    human_message = HumanMessage(content=[
-        
-        {
-            "type": "image_url", 
-            "image_url": {
-                "url": f"data:image/png;base64,{base64_image}"
-            }
-        },
-        {
-            "type":"text",
-            "text":human_template
-        }
-    ])
-    prompt = ChatPromptTemplate.from_messages([
-        human_message
-    ])
-    structured_chat = chat.with_structured_output(ImageVocabularyResponse)
-    chain = prompt | structured_chat
     
-    result = chain.invoke({})
-    print(result)
-    
-    if not result or not result.vocabulary:
-        return []
+    try:
+        response = bedrock.invoke_model(
+            modelId="anthropic.claude-3-haiku-20240307-v1:0",
+            body=json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 1000,
+                "temperature": 0,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "image/jpeg",
+                                    "data": base64_image
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": prompt
+                            }
+                        ]
+                    }
+                ]
+            })
+        )
         
-    return result.vocabulary  # Returns List[SpanishVocabulary]
+        response_body = json.loads(response.get('body').read())
+        response_text = response_body['content'][0]['text']
+        
+        # Extract JSON from response
+        json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+        if not json_match:
+            raise ValueError("No JSON found in response")
+            
+        json_str = json_match.group()
+        data = json.loads(json_str)
+        
+        # Convert to SpanishVocabulary objects
+        vocab_list = []
+        for item in data.get("vocabulary", []):
+            vocab = SpanishVocabulary(
+                word=item["word"],
+                part_of_speech=item["part_of_speech"],
+                translation=item["translation"],
+                example_sentence=item["example_sentence"]
+            )
+            vocab_list.append(vocab)
+        
+        return vocab_list
+    except Exception as e:
+        st.error(f"画像分析中にエラーが発生しました: {str(e)}")
+        raise
 
 def analyze_image(image_data: bytes) -> list[SpanishVocabulary]:
     """
@@ -173,6 +203,10 @@ def main():
     st.title("Photoword - スペイン語単語帳")
     st.subheader("写真をアップロードして単語帳を作成")
     
+    # Initialize session state for tracking processed images
+    if "processed_image_hash" not in st.session_state:
+        st.session_state.processed_image_hash = None
+    
     # Initialize database session
     db = SessionLocal()
     try:
@@ -189,15 +223,24 @@ def main():
         # Display uploaded image and analyze
         if uploaded_file is not None:
             image_data = uploaded_file.getvalue()
-            st.image(uploaded_file, use_container_width=True)
-            vocab_list = analyze_image(image_data)
-            
-            if vocab_list:
-                # Save image and vocabulary to database
-                image = save_image(db, user.id, image_data)
-                save_vocabulary(db, user.id, image.id, vocab_list)
+            current_hash = hashlib.md5(image_data).hexdigest()
+            # Only process if this image hash is different from the last processed
+            if st.session_state.processed_image_hash != current_hash:
+                st.image(uploaded_file, use_container_width=True)
+                vocab_list = analyze_image(image_data)
+                
+                if vocab_list:
+                    # Save image and vocabulary to database
+                    image = save_image(db, user.id, image_data)
+                    save_vocabulary(db, user.id, image.id, vocab_list)
+                    # Mark as processed
+                    st.session_state.processed_image_hash = current_hash
+                    # Clear file uploader by triggering a rerun
+                    st.rerun()
+                else:
+                    st.write("単語を抽出できませんでした。")
             else:
-                st.write("単語を抽出できませんでした。")
+                st.warning("この画像は既に処理済みです。")
         
         # Display timeline entries with styling
         st.markdown("## 📸 タイムライン")
