@@ -51,7 +51,7 @@ def test_structured_output():
                 "word": "manzana",
                 "part_of_speech": "名詞",
                 "translation": "りんご",
-                "example": "La manzana está fresca."
+                "example_sentence": "La manzana está fresca."
             }
         ]
     }

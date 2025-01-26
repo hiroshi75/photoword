@@ -58,8 +58,12 @@ def get_timeline_entries(
     
     # Apply date filters if provided
     if start_date:
+        # Ensure start_date is at the beginning of the day
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
         query = query.filter(Image.created_at >= start_date)
     if end_date:
+        # Ensure end_date is at the end of the day
+        end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
         query = query.filter(Image.created_at <= end_date)
     
     # Order by creation date (newest first) and apply pagination

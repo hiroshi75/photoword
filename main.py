@@ -61,15 +61,16 @@ def analyze_image_core(image_data: bytes) -> List[SpanishVocabulary]:
     "vocabulary": [{
         "word": "スペイン語の単語",
         "part_of_speech": "品詞（必ず「名詞」「動詞」「形容詞」「副詞」のなどを指定）",
-        "translation": "日本語訳",
+        "translation": "日本語訳（必ず日本語で記載。例：「椅子」「テーブル」「窓」など）",
         "example_sentence": "その単語を使用したスペイン語の例文（必ず完全な文を記載）"
     }]
 }
 
 重要な注意点：
 1. 各単語について、必ず4つの情報（word, part_of_speech, translation, example_sentence）を含めてください
-2. 例文は必ず完全な文で記載してください
-3. JSONの形式を厳密に守ってください
+2. translationは必ず日本語で記載してください（英語は使用しないでください）
+3. 例文は必ず完全な文で記載してください
+4. JSONの形式を厳密に守ってください
 """
     
     try:
@@ -225,9 +226,13 @@ def main():
         # Get or create test user
         user = get_or_create_user(db)
         
+        # Get initial timeline entries
+        entries = get_timeline_entries(db, user.id)
+        st.markdown("## 📸 タイムライン")
+        
         # Add floating button using float_box
         if float_box(
-            "### 画像を追加 ➕",
+            '<div style="font-size: 16px;">画像を追加 ➕</div>',
             width="120px",
             height="50px",
             right="20px",
@@ -235,7 +240,7 @@ def main():
             background="#4CAF50",
             shadow=3,
             transition=2,
-            css="cursor: pointer; color: white; text-align: center; padding: 10px; border-radius: 25px; &:hover { background-color: #45a049 !important; }"
+            css="cursor: pointer; color: white; text-align: center; padding: 10px; border-radius: 25px; display: flex; align-items: center; justify-content: center; &:hover { background-color: #45a049 !important; }"
         ):
             st.session_state.show_modal = True
         
@@ -305,8 +310,8 @@ def main():
                             st.session_state.show_modal = False
                             st.rerun()
         
-        # Display timeline entries with styling
-        st.markdown("## 📸 タイムライン")
+        # Get and display timeline entries
+        entries = get_timeline_entries(db, user.id)
         
         # Initialize session state for filters
         if "search_term" not in st.session_state:
