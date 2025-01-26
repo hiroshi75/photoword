@@ -1,5 +1,5 @@
 import streamlit as st
-from streamlit_float import *
+from streamlit_float import float_init, float_box
 import boto3
 import base64
 import hashlib
@@ -222,14 +222,21 @@ def main():
         # Get or create test user
         user = get_or_create_user(db)
         
-        # Add floating button
-        float_button(
-            label="画像を追加",
-            icon="➕",
-            position="bottom-right",
-            key="add_image_button",
-            on_click=lambda: setattr(st.session_state, "show_modal", True)
+        # Add floating button using float_box
+        float_box(
+            markdown="<button onclick='parent.document.querySelector(`[data-testid=\"stButton\"] button`).click()'>➕ 画像を追加</button>",
+            width="auto",
+            height="auto",
+            right="20px",
+            bottom="20px",
+            background="var(--default-backgroundColor)",
+            border="1px solid var(--default-textColor)",
+            shadow=0
         )
+        
+        # Hidden button to handle click event
+        if st.button("", key="add_image_button", type="primary"):
+            st.session_state.show_modal = True
         
         # Modal dialog for image upload
         if st.session_state.show_modal:
