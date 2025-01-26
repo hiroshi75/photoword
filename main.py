@@ -36,14 +36,13 @@ def analyze_image_core(image_data: bytes) -> List[SpanishVocabulary]:
         Exception: For any other unexpected errors
     """
     base64_image = encode_image_data(image_data)
-    image_template = {"url": f"data:image/png;base64,{base64_image}"}
     
     chat = ChatBedrock(
-        model_id="anthropic.claude-3-haiku-20240307-v1:0",
-        model_kwargs=dict(temperature=0),
-        region="us-east-1",
         aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
-        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"]
+        aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+        model_id="anthropic.claude-3-haiku-20240307-v1:0",
+        region_name="us-east-1",
+        model_kwargs=dict(temperature=0)
     )
     
     human_template = """
@@ -70,7 +69,9 @@ def analyze_image_core(image_data: bytes) -> List[SpanishVocabulary]:
         
         {
             "type": "image_url", 
-            "image_url": image_template
+            "image_url": {
+                "url": f"data:image/png;base64,{base64_image}"
+            }
         },
         {
             "type":"text",
@@ -140,13 +141,13 @@ def main():
         if vocab_list:
             st.subheader("抽出された単語:")
             for vocab_item in vocab_list:
-                # Create a 3-row table for each vocabulary item
-                data = [
-                    [f"{vocab_item.word}"],  # 1行目: スペイン語の単語
-                    [f"{vocab_item.part_of_speech}, {vocab_item.translation}"],  # 2行目: 品詞、日本語の意味
-                    [vocab_item.example_sentence]  # 3行目: 例文
-                ]
-                st.table(data)
+                # Display vocabulary item in markdown format with bullet points
+                markdown_text = f"""
+                ### {vocab_item.word}
+                - [{vocab_item.part_of_speech}]{vocab_item.translation}
+                - {vocab_item.example_sentence}
+                """
+                st.markdown(markdown_text)
         else:
             st.write("単語を抽出できませんでした。")
 
