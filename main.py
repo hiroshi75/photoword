@@ -226,8 +226,6 @@ def main():
         # Get or create test user
         user = get_or_create_user(db)
         
-        # Get initial timeline entries
-        entries = get_timeline_entries(db, user.id)
         st.markdown("## 📸 タイムライン")
         
         # Add floating button using float_box
