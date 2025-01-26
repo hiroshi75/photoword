@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_float import *
 import boto3
 import base64
 import hashlib
@@ -200,12 +201,20 @@ def main():
     Main function for the Photoword application.
     Provides a simple interface for uploading photos and analyzing them for Spanish vocabulary.
     """
-    st.title("Photoword - スペイン語単語帳")
-    st.subheader("写真をアップロードして単語帳を作成")
+    # Initialize floating functionality
+    float_init()
     
-    # Initialize session state for tracking processed images
+    st.title("Photoword - スペイン語単語帳")
+    
+    # Initialize session states
     if "processed_image_hash" not in st.session_state:
         st.session_state.processed_image_hash = None
+    if "show_modal" not in st.session_state:
+        st.session_state.show_modal = False
+    if "current_image" not in st.session_state:
+        st.session_state.current_image = None
+    if "current_vocab" not in st.session_state:
+        st.session_state.current_vocab = None
     
     # Initialize database session
     db = SessionLocal()
@@ -213,34 +222,80 @@ def main():
         # Get or create test user
         user = get_or_create_user(db)
         
-        # File uploader widget
-        uploaded_file = st.file_uploader(
-            "写真をアップロードしてください",
-            type=["jpg", "jpeg", "png"],
-            help="JPG、JPEG、またはPNG形式の画像ファイルをアップロードしてください。"
+        # Add floating button
+        float_button(
+            label="画像を追加",
+            icon="➕",
+            position="bottom-right",
+            key="add_image_button",
+            on_click=lambda: setattr(st.session_state, "show_modal", True)
         )
         
-        # Display uploaded image and analyze
-        if uploaded_file is not None:
-            image_data = uploaded_file.getvalue()
-            current_hash = hashlib.md5(image_data).hexdigest()
-            # Only process if this image hash is different from the last processed
-            if st.session_state.processed_image_hash != current_hash:
-                st.image(uploaded_file, use_container_width=True)
-                vocab_list = analyze_image(image_data)
+        # Modal dialog for image upload
+        if st.session_state.show_modal:
+            with st.container():
+                st.markdown("## 📸 画像アップロード")
                 
-                if vocab_list:
-                    # Save image and vocabulary to database
-                    image = save_image(db, user.id, image_data)
-                    save_vocabulary(db, user.id, image.id, vocab_list)
-                    # Mark as processed
-                    st.session_state.processed_image_hash = current_hash
-                    # Clear file uploader by triggering a rerun
-                    st.rerun()
-                else:
-                    st.write("単語を抽出できませんでした。")
-            else:
-                st.warning("この画像は既に処理済みです。")
+                # File uploader in modal
+                uploaded_file = st.file_uploader(
+                    "写真をアップロードしてください",
+                    type=["jpg", "jpeg", "png"],
+                    key="modal_uploader"
+                )
+                
+                if uploaded_file:
+                    image_data = uploaded_file.getvalue()
+                    current_hash = hashlib.md5(image_data).hexdigest()
+                    
+                    # Show preview
+                    st.image(image_data, use_container_width=True)
+                    
+                    # Analyze image with spinner
+                    with st.spinner("画像を分析中..."):
+                        vocab_list = analyze_image(image_data)
+                    
+                    if vocab_list:
+                        st.markdown("### 📝 抽出された単語")
+                        for vocab in vocab_list:
+                            st.markdown(f"""
+                            ### {vocab.word}
+                            - 📚 [{vocab.part_of_speech}] {vocab.translation}
+                            - 💭 {vocab.example_sentence}
+                            ---
+                            """)
+                        
+                        # Store current state
+                        st.session_state.current_image = image_data
+                        st.session_state.current_vocab = vocab_list
+                        
+                        # Add OK/Cancel buttons
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if st.button("OK", key="modal_ok"):
+                                if st.session_state.processed_image_hash != current_hash:
+                                    # Save to database
+                                    image = save_image(db, user.id, image_data)
+                                    save_vocabulary(db, user.id, image.id, vocab_list)
+                                    st.session_state.processed_image_hash = current_hash
+                                    # Clear modal state
+                                    st.session_state.show_modal = False
+                                    st.session_state.current_image = None
+                                    st.session_state.current_vocab = None
+                                    st.rerun()
+                                else:
+                                    st.warning("この画像は既に処理済みです。")
+                        with col2:
+                            if st.button("キャンセル", key="modal_cancel"):
+                                # Clear modal state
+                                st.session_state.show_modal = False
+                                st.session_state.current_image = None
+                                st.session_state.current_vocab = None
+                                st.rerun()
+                    else:
+                        st.error("単語を抽出できませんでした。別の画像を試してください。")
+                        if st.button("閉じる", key="modal_close"):
+                            st.session_state.show_modal = False
+                            st.rerun()
         
         # Display timeline entries with styling
         st.markdown("## 📸 タイムライン")
