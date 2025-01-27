@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 # Local imports
-from models import SpanishVocabulary, ImageVocabularyResponse
+from models.models import SpanishVocabulary, ImageVocabularyResponse
 from models_db import User, Image, VocabularyEntry
 from db import SessionLocal
 from db.operations import get_or_create_user, save_image, save_vocabulary
