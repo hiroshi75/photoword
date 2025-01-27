@@ -8,10 +8,10 @@ from sqlalchemy.orm import Session
 from models import SpanishVocabulary, ImageVocabularyResponse
 from models_db import User, Image, VocabularyEntry
 from db import SessionLocal
+from db.operations import get_or_create_user, save_image, save_vocabulary
 
 # Core functionality
 from core.image_analysis import analyze_image, analyze_image_core, encode_image_data
-from db.operations import get_or_create_user, save_image, save_vocabulary
 
 # UI components
 from ui.components.timeline import TimelineEntry, get_timeline_entries

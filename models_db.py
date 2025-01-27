@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Text, CheckConstraint, LargeBinary
 from sqlalchemy.sql import func
 from sqlalchemy.types import TIMESTAMP
-from db import Base
+from db import Base, SessionLocal
 
 class User(Base):
     __tablename__ = "users"

@@ -1,9 +1,10 @@
 import streamlit as st
 from typing import Optional, Tuple
 import hashlib
+import io
+from PIL import Image
 from core.image_analysis import analyze_image
 from db.operations import save_image, save_vocabulary
-
 from ui.styles import load_styles
 
 def render_modal_styles():
@@ -56,8 +57,6 @@ def render_image_upload_modal(db, user_id: int) -> None:
                 current_hash = hashlib.md5(image_data).hexdigest()
                 
                 # Verify image data using PIL
-                from PIL import Image
-                import io
                 Image.open(io.BytesIO(image_data))
                 
                 # Create a new container for preview and analysis
