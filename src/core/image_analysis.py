@@ -6,7 +6,7 @@ import os
 import boto3
 from typing import List
 import streamlit as st
-from models import SpanishVocabulary, ImageVocabularyResponse
+from models.models import SpanishVocabulary, ImageVocabularyResponse
 
 # Initialize AWS Bedrock client
 bedrock = boto3.client(

@@ -19,24 +19,22 @@ def render_image_upload_modal(db, user_id: int) -> None:
         return
 
     render_modal_styles()
-    st.markdown("""
-        <style>
-        .modal-overlay { display: block !important; }
-        </style>
-    """, unsafe_allow_html=True)
+    # Add overlay with show class when modal is active
+    st.markdown('<div class="modal-overlay show"></div>', unsafe_allow_html=True)
     
-    # Add overlay
-    st.markdown('<div class="modal-overlay"></div>', unsafe_allow_html=True)
-    
-    modal_container = st.container()
-    with modal_container:
-        with st.container():
-            st.markdown('<div class="modal-container" data-modal="true">', unsafe_allow_html=True)
-            st.markdown("""
+    # Create a container for the modal
+    with st.container():
+        # Add debug logs
+        st.write(f"Modal state in render: {st.session_state.show_modal}")
+        
+        # Create the modal structure
+        st.markdown("""
+            <div class="modal-container" data-modal="true">
                 <div class="modal-header">
                     <h3>画像のアップロード</h3>
                 </div>
-            """, unsafe_allow_html=True)
+            </div>
+        """, unsafe_allow_html=True)
             
             if st.button("×", key="modal_close_btn", help="モーダルを閉じる"):
                 st.session_state.show_modal = False
