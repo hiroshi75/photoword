@@ -1,10 +1,10 @@
 import streamlit as st
 from typing import Optional, Tuple
 import hashlib
-from src.core.image_analysis import analyze_image
-from src.db.operations import save_image, save_vocabulary
+from core.image_analysis import analyze_image
+from db.operations import save_image, save_vocabulary
 
-from src.ui.styles import load_styles
+from ui.styles import load_styles
 
 def render_modal_styles():
     """Render CSS styles for modal dialog."""

@@ -2,7 +2,7 @@ import streamlit as st
 from datetime import datetime
 from typing import Optional, Tuple
 
-from src.ui.styles import load_styles
+from ui.styles import load_styles
 
 def render_filter_styles():
     """Render CSS styles for filter section."""

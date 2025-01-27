@@ -2,13 +2,23 @@ import streamlit as st
 from streamlit_float import float_init, float_box
 import hashlib
 from datetime import datetime
-from models import SpanishVocabulary, ImageVocabularyResponse
-from db import SessionLocal
-from models_db import User, Image, VocabularyEntry
 from sqlalchemy.orm import Session
-from src.core.image_analysis import analyze_image, analyze_image_core, encode_image_data
-from src.db.operations import get_or_create_user, save_image, save_vocabulary
-from src.ui.components.timeline import TimelineEntry, get_timeline_entries
+
+# Local imports
+from models import SpanishVocabulary, ImageVocabularyResponse
+from models_db import User, Image, VocabularyEntry
+from db import SessionLocal
+
+# Core functionality
+from core.image_analysis import analyze_image, analyze_image_core, encode_image_data
+from db.operations import get_or_create_user, save_image, save_vocabulary
+
+# UI components
+from ui.components.timeline import TimelineEntry, get_timeline_entries
+from ui.components.modal import render_image_upload_modal
+from ui.components.filters import render_filters
+from ui.components.timeline import render_timeline
+from ui.styles import load_styles
 
 def main():
     """
@@ -19,7 +29,6 @@ def main():
     
     # Initialize floating functionality and styles
     float_init()
-    from src.ui.styles import load_styles
     load_styles()
     
     # Initialize all session states before any UI rendering
@@ -81,10 +90,7 @@ def main():
             st.rerun()
         st.write(f"After float_box: {st.session_state.show_modal}")  # Debug log
         
-        # Import and use UI components
-        from src.ui.components.modal import render_image_upload_modal
-        from src.ui.components.filters import render_filters
-        from src.ui.components.timeline import render_timeline
+        # Use UI components
         
         # Render UI components
         render_image_upload_modal(db, user.id)

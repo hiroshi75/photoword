@@ -6,7 +6,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-from src.ui.styles import load_styles
+from ui.styles import load_styles
 
 class TimelineEntry:
     """Class representing a timeline entry with image and vocabulary."""
