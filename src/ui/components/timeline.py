@@ -1,8 +1,83 @@
 import streamlit as st
 from typing import List
-from timeline import TimelineEntry
+from models_db import Image, VocabularyEntry
+from datetime import datetime
+from typing import List, Optional
+from sqlalchemy.orm import Session
+from sqlalchemy import desc
 
 from src.ui.styles import load_styles
+
+class TimelineEntry:
+    """Class representing a timeline entry with image and vocabulary."""
+    def __init__(self, id: int, created_at: datetime, image_data: bytes, vocabulary_entries: List[VocabularyEntry]):
+        self.id = id
+        self.created_at = created_at
+        self.image_data = image_data
+        self.vocabulary_entries = vocabulary_entries
+
+def get_timeline_entries(
+    db: Session,
+    user_id: int,
+    skip: int = 0,
+    limit: int = 10,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    search_term: Optional[str] = None
+) -> List[TimelineEntry]:
+    """
+    Get timeline entries with filtering and pagination.
+    
+    Args:
+        db: Database session
+        user_id: User ID to get entries for
+        skip: Number of entries to skip (for pagination)
+        limit: Maximum number of entries to return
+        start_date: Filter entries after this date
+        end_date: Filter entries before this date
+        search_term: Search term to filter vocabulary
+        
+    Returns:
+        List of TimelineEntry objects
+    """
+    # Start with base query for images
+    query = db.query(Image).filter(Image.user_id == user_id)
+    
+    # Apply date filters if provided
+    if start_date:
+        query = query.filter(Image.created_at >= start_date)
+    if end_date:
+        query = query.filter(Image.created_at <= end_date)
+    
+    # Order by creation date (newest first) and apply pagination
+    query = query.order_by(desc(Image.created_at)).offset(skip).limit(limit)
+    
+    # Execute query and build timeline entries
+    timeline_entries = []
+    for image in query.all():
+        # Get vocabulary entries for this image
+        vocab_query = db.query(VocabularyEntry).filter(
+            VocabularyEntry.image_id == image.id
+        )
+        
+        # Apply search term filter if provided
+        if search_term:
+            vocab_query = vocab_query.filter(
+                (VocabularyEntry.spanish_word.ilike(f"%{search_term}%")) |
+                (VocabularyEntry.japanese_translation.ilike(f"%{search_term}%"))
+            )
+        
+        # Only include images that have matching vocabulary after search
+        vocab_entries = vocab_query.all()
+        if not search_term or vocab_entries:
+            timeline_entries.append(TimelineEntry(
+                id=image.id,
+                created_at=image.created_at,
+                image_data=image.image_data,
+                vocabulary_entries=vocab_entries
+            ))
+    
+    return timeline_entries
 
 def render_timeline_styles():
     """Render CSS styles for timeline display."""

@@ -6,20 +6,35 @@ from models import SpanishVocabulary, ImageVocabularyResponse
 from db import SessionLocal
 from models_db import User, Image, VocabularyEntry
 from sqlalchemy.orm import Session
-from timeline import TimelineEntry, get_timeline_entries
 from src.core.image_analysis import analyze_image, analyze_image_core, encode_image_data
-
 from src.db.operations import get_or_create_user, save_image, save_vocabulary
+from src.ui.components.timeline import TimelineEntry, get_timeline_entries
 
 def main():
     """
     Main function for the Photoword application.
     Provides a simple interface for uploading photos and analyzing them for Spanish vocabulary.
     """
+    st.set_page_config(layout="wide")  # Initialize page config first
+    
     # Initialize floating functionality and styles
     float_init()
     from src.ui.styles import load_styles
     load_styles()
+    
+    # Initialize all session states before any UI rendering
+    if "initialized" not in st.session_state:
+        st.session_state.initialized = True
+        st.session_state.show_modal = False
+        st.session_state.processed_image_hash = None
+        st.session_state.current_image = None
+        st.session_state.current_vocab = None
+        st.session_state.search_term = ""
+        st.session_state.start_date = None
+        st.session_state.end_date = None
+        st.session_state.page_size = 5
+        st.session_state.page_number = 1
+        st.session_state.show_detail = None
     
     st.title("Photoword - スペイン語単語帳")
     
@@ -41,6 +56,8 @@ def main():
     for key, default_value in session_states.items():
         if key not in st.session_state:
             st.session_state[key] = default_value
+        elif key == "show_modal":  # Force modal to be hidden on page load
+            st.session_state[key] = False
     
     # Initialize database session
     db = SessionLocal()
@@ -49,8 +66,9 @@ def main():
         user = get_or_create_user(db)
         
         # Add floating button for image upload
+        st.write(f"Before float_box: {st.session_state.show_modal}")  # Debug log
         if float_box(
-            '<div>画像を追加 ➕</div>',
+            '<div style="color: white; border-radius: 25px; border: none; cursor: pointer;">画像を追加 ➕</div>',
             width="130px",
             height="50px",
             right="20px",
@@ -60,6 +78,8 @@ def main():
             transition=0.3
         ):
             st.session_state.show_modal = True
+            st.rerun()
+        st.write(f"After float_box: {st.session_state.show_modal}")  # Debug log
         
         # Import and use UI components
         from src.ui.components.modal import render_image_upload_modal

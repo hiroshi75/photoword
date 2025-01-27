@@ -7,6 +7,11 @@
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 999999;
+    display: none;
+}
+
+.modal-overlay.show {
+    display: block;
 }
 
 .modal-container {

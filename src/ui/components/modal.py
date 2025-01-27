@@ -12,10 +12,17 @@ def render_modal_styles():
 
 def render_image_upload_modal(db, user_id: int) -> None:
     """Render the image upload modal dialog."""
+    st.write(f"Modal state: {st.session_state.show_modal}")  # Debug log
+    
     if not st.session_state.show_modal:
         return
 
     render_modal_styles()
+    st.markdown("""
+        <style>
+        .modal-overlay { display: block !important; }
+        </style>
+    """, unsafe_allow_html=True)
     
     # Add overlay
     st.markdown('<div class="modal-overlay"></div>', unsafe_allow_html=True)

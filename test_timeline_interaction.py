@@ -1,11 +1,12 @@
 import pytest
 from datetime import datetime, timedelta
+import base64
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from db import Base
 from models_db import User, Image, VocabularyEntry
+from src.db.operations import get_or_create_user, save_image, save_vocabulary
 from timeline import get_timeline_entries
-import base64
 
 # Test database setup
 TEST_DATABASE_URL = "sqlite:///test_photoword.db"
