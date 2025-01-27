@@ -2,23 +2,12 @@ import streamlit as st
 from datetime import datetime
 from typing import Optional, Tuple
 
+from src.ui.styles import load_styles
+
 def render_filter_styles():
     """Render CSS styles for filter section."""
+    load_styles()
     st.markdown("""
-        <style>
-            .filter-section {
-                background-color: #f8f9fa;
-                padding: 1rem;
-                border-radius: 10px;
-                margin: 1rem 0;
-            }
-            [data-testid="stFileUploader"]:not([key="modal_uploader"]) {
-                display: none !important;
-            }
-            [data-testid="stFileUploadDropzone"]:not([key="modal_uploader"]) {
-                display: none !important;
-            }
-        </style>
         <div class="filter-section">
             <h3>🔍 フィルター</h3>
         </div>

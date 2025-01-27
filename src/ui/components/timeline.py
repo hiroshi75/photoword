@@ -2,19 +2,12 @@ import streamlit as st
 from typing import List
 from timeline import TimelineEntry
 
+from src.ui.styles import load_styles
+
 def render_timeline_styles():
     """Render CSS styles for timeline display."""
+    load_styles()
     st.markdown("""
-        <style>
-            .timeline-header {
-                margin-bottom: 2rem;
-                padding-bottom: 1rem;
-                border-bottom: 2px solid #f0f0f0;
-            }
-            .upload-container {
-                display: none !important;
-            }
-        </style>
         <div class="timeline-header">
             <h2>📸 タイムライン</h2>
         </div>
