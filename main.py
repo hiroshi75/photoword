@@ -205,62 +205,255 @@ def main():
     # Initialize floating functionality and session states
     float_init()
     
-    if "show_modal" not in st.session_state:
-        st.session_state.show_modal = False
-    
     st.title("Photoword - スペイン語単語帳")
     
-    # Initialize session states
-    if "processed_image_hash" not in st.session_state:
-        st.session_state.processed_image_hash = None
-    if "show_modal" not in st.session_state:
-        st.session_state.show_modal = False
-    if "current_image" not in st.session_state:
-        st.session_state.current_image = None
-    if "current_vocab" not in st.session_state:
-        st.session_state.current_vocab = None
+    # Initialize all session states
+    session_states = {
+        "processed_image_hash": None,
+        "show_modal": False,
+        "current_image": None,
+        "current_vocab": None,
+        "search_term": "",
+        "start_date": None,
+        "end_date": None,
+        "page_size": 5,
+        "page_number": 1,
+        "show_detail": None
+    }
+    
+    # Initialize all states at once
+    for key, default_value in session_states.items():
+        if key not in st.session_state:
+            st.session_state[key] = default_value
+    
+    # Add global styles
+    st.markdown("""
+        <style>
+            /* Hide any legacy upload widgets while preserving modal uploader */
+            [data-testid="stFileUploader"]:not([key="modal_uploader"]),
+            [data-testid="stFileUploadDropzone"]:not([key="modal_uploader"]),
+            .upload-container,
+            .element-container:has(> [data-testid="stFileUploader"]:not([key="modal_uploader"])) {
+                display: none !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
     
     # Initialize database session
     db = SessionLocal()
     try:
         # Get or create test user
         user = get_or_create_user(db)
+        # Display timeline header with better styling
+        st.markdown("""
+            <style>
+                .timeline-header {
+                    margin-bottom: 2rem;
+                    padding-bottom: 1rem;
+                    border-bottom: 2px solid #f0f0f0;
+                }
+                .upload-container {
+                    display: none !important;
+                }
+            </style>
+            <div class="timeline-header">
+                <h2>📸 タイムライン</h2>
+            </div>
+        """, unsafe_allow_html=True)
         
-        st.markdown("## 📸 タイムライン")
-        
-        # Add floating button using float_box
+        # Add floating button using float_box with enhanced styling
         if float_box(
-            '<div style="font-size: 16px;">画像を追加 ➕</div>',
-            width="120px",
+            '<div style="font-size: 16px; font-weight: 500;">画像を追加 ➕</div>',
+            width="130px",
             height="50px",
             right="20px",
             bottom="20px",
             background="#4CAF50",
-            shadow=3,
-            transition=2,
-            css="cursor: pointer; color: white; text-align: center; padding: 10px; border-radius: 25px; display: flex; align-items: center; justify-content: center; &:hover { background-color: #45a049 !important; }"
+            shadow=4,
+            transition=0.3,
+            css="""
+                cursor: pointer;
+                color: white;
+                text-align: center;
+                padding: 12px;
+                border-radius: 25px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+                &:hover {
+                    background-color: #45a049 !important;
+                    transform: translateY(-2px);
+                }
+            """
         ):
             st.session_state.show_modal = True
         
         # Modal dialog for image upload
         if st.session_state.show_modal:
-            with st.container():
-                st.markdown("## 📸 画像アップロード")
-                
-                # File uploader in modal
-                uploaded_file = st.file_uploader(
-                    "写真をアップロードしてください",
-                    type=["jpg", "jpeg", "png"],
-                    key="modal_uploader"
-                )
+            # Create a modal-like container with custom styling
+            st.markdown("""
+                <style>
+                    .modal-overlay {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background-color: rgba(0, 0, 0, 0.5);
+                        z-index: 999999;
+                    }
+                    .modal-container {
+                        background-color: white;
+                        padding: 2rem;
+                        border-radius: 10px;
+                        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+                        margin: 2rem auto;
+                        border: 1px solid #e0e0e0;
+                        position: relative;
+                        z-index: 1000000;
+                        max-width: 800px;
+                    }
+                    .modal-header {
+                        margin-bottom: 1.5rem;
+                        padding-bottom: 1rem;
+                        border-bottom: 2px solid #f0f0f0;
+                    }
+                    .modal-close {
+                        position: absolute;
+                        top: 1rem;
+                        right: 1rem;
+                        cursor: pointer;
+                        font-size: 1.5rem;
+                        color: #666;
+                    }
+                    .modal-close:hover {
+                        color: #333;
+                    }
+                </style>
+            """, unsafe_allow_html=True)
+            
+            # Add overlay
+            st.markdown('<div class="modal-overlay"></div>', unsafe_allow_html=True)
+            
+            modal_container = st.container()
+            with modal_container:
+                with st.container():
+                    st.markdown('<div class="modal-container" data-modal="true">', unsafe_allow_html=True)
+                    st.markdown("""
+                        <div class="modal-header">
+                            <h3>画像のアップロード</h3>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Add close button using Streamlit with custom styling
+                    st.markdown("""
+                        <style>
+                            div[data-testid="stButton"] button:has(div:contains("×")) {
+                                position: absolute;
+                                top: 1rem;
+                                right: 1rem;
+                                padding: 0.5rem 1rem;
+                                font-size: 1.5rem;
+                                color: #666;
+                                background: none;
+                                border: none;
+                                cursor: pointer;
+                            }
+                            div[data-testid="stButton"] button:has(div:contains("×")):hover {
+                                color: #333;
+                            }
+                            /* Ensure file uploader is visible */
+                            [data-testid="stFileUploader"] {
+                                display: block !important;
+                                margin: 1rem 0;
+                                visibility: visible !important;
+                                opacity: 1 !important;
+                            }
+                            [data-testid="stFileUploadDropzone"] {
+                                display: block !important;
+                                margin: 1rem 0;
+                                visibility: visible !important;
+                                opacity: 1 !important;
+                            }
+                            /* Hide legacy upload widgets */
+                            [data-testid="stFileUploader"]:not([key="modal_uploader"]),
+                            [data-testid="stFileUploadDropzone"]:not([key="modal_uploader"]) {
+                                display: none !important;
+                            }
+                        </style>
+                    """, unsafe_allow_html=True)
+                    if st.button("×", key="modal_close_btn", help="モーダルを閉じる"):
+                        st.session_state.show_modal = False
+                        st.rerun()
+                    
+                    # File uploader in modal with improved styling and visibility
+                    st.markdown("""
+                        <style>
+                        /* Modal styling */
+                        div[data-modal="true"] {
+                            position: fixed;
+                            top: 50%;
+                            left: 50%;
+                            transform: translate(-50%, -50%);
+                            z-index: 999999;
+                            background: white;
+                            padding: 20px;
+                            border-radius: 5px;
+                            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                            width: 80%;
+                            max-width: 800px;
+                        }
+                        
+                        /* Ensure file uploader is visible and on top */
+                        div[data-modal="true"] [data-testid="stFileUploader"] {
+                            position: relative;
+                            z-index: 1000000;
+                            display: block !important;
+                            visibility: visible !important;
+                            opacity: 1 !important;
+                            margin: 20px 0;
+                        }
+                        
+                        /* Style the upload box */
+                        div[data-modal="true"] [data-testid="stFileUploadDropzone"] {
+                            border: 2px dashed #4CAF50;
+                            border-radius: 5px;
+                            padding: 20px;
+                            text-align: center;
+                            background: #f8f9fa;
+                        }
+                        </style>
+                    """, unsafe_allow_html=True)
+                    uploaded_file = st.file_uploader(
+                        "写真をアップロードしてください",
+                        type=["jpg", "jpeg", "png"],
+                        key="modal_uploader",
+                        help="JPG、JPEG、またはPNG形式の画像ファイルをアップロードしてください。"
+                    )
+                    st.markdown('</div>', unsafe_allow_html=True)
                 
                 if uploaded_file:
-                    image_data = uploaded_file.getvalue()
-                    current_hash = hashlib.md5(image_data).hexdigest()
-                    
-                    # Show preview
-                    st.image(image_data, use_container_width=True)
-                    
+                    try:
+                        # Read and verify image data
+                        image_data = uploaded_file.getvalue()
+                        current_hash = hashlib.md5(image_data).hexdigest()
+                        
+                        # Verify image data using PIL
+                        from PIL import Image
+                        import io
+                        Image.open(io.BytesIO(image_data))
+                        
+                        # Create a new container for preview and analysis
+                        with st.container():
+                            st.markdown('<div class="modal-container">', unsafe_allow_html=True)
+                            
+                            # Show preview
+                            st.image(image_data, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"画像の読み込みに失敗しました: {str(e)}")
+                        return
+                        
                     # Analyze image with spinner
                     with st.spinner("画像を分析中..."):
                         vocab_list = analyze_image(image_data)
@@ -307,24 +500,32 @@ def main():
                         if st.button("閉じる", key="modal_close"):
                             st.session_state.show_modal = False
                             st.rerun()
+                    st.markdown('</div>', unsafe_allow_html=True)
         
-        # Get and display timeline entries
-        entries = get_timeline_entries(db, user.id)
+        # Get timeline entries
         
-        # Initialize session state for filters
-        if "search_term" not in st.session_state:
-            st.session_state.search_term = ""
-        if "start_date" not in st.session_state:
-            st.session_state.start_date = None
-        if "end_date" not in st.session_state:
-            st.session_state.end_date = None
-        if "page_size" not in st.session_state:
-            st.session_state.page_size = 5
-        if "page_number" not in st.session_state:
-            st.session_state.page_number = 1
-
-        # Add search and date filter widgets with better styling
-        st.markdown("### 🔍 フィルター")
+        # Add filter section with better styling
+        st.markdown("""
+            <style>
+                .filter-section {
+                    background-color: #f8f9fa;
+                    padding: 1rem;
+                    border-radius: 10px;
+                    margin: 1rem 0;
+                }
+                /* Hide any legacy upload widgets */
+                [data-testid="stFileUploader"]:not([key="modal_uploader"]) {
+                    display: none !important;
+                }
+                [data-testid="stFileUploadDropzone"]:not([key="modal_uploader"]) {
+                    display: none !important;
+                }
+            </style>
+            <div class="filter-section">
+                <h3>🔍 フィルター</h3>
+            </div>
+        """, unsafe_allow_html=True)
+        
         filter_container = st.container()
         with filter_container:
             # Add search input
